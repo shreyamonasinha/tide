@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIDE — Through Intensity, Discover Ease</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --teal:#38b8c8;--teal-light:#7dd4e0;
+  --water-mid:#1a5c82;
+  --text-light:rgba(255,255,255,0.93);
+  --text-dim:rgba(255,255,255,0.48);
+  --ui-bg:rgba(8,22,38,0.78);
+  --ui-border:rgba(255,255,255,0.10);
+}
+html,body{width:100%;height:100%;font-family:'DM Sans',sans-serif;background:#0d1f2f;overflow:hidden;color:var(--text-light);}
+.screen{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 0.7s ease;z-index:10;}
+.screen.active{opacity:1;pointer-events:all;}
+#ocean-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
+#boat-canvas{position:fixed;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;top:30%;}
+
+/* Edge pulse */
+#edge-pulse{position:fixed;inset:0;z-index:20;pointer-events:none;}
+#edge-pulse.pulse{animation:edgeFade 0.9s ease forwards;}
+@keyframes edgeFade{0%{box-shadow:inset 0 0 90px 28px rgba(210,60,60,0.65);}100%{box-shadow:inset 0 0 0 0 rgba(210,60,60,0);}}
+
+/* Ghost text */
+#ghost-text{
+  position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);
+  z-index:25;pointer-events:none;
+  font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:clamp(1.3rem,2.8vw,1.9rem);
+  color:rgba(255,255,255,0);text-shadow:0 0 30px rgba(0,0,0,0.7);text-align:center;
+}
+#ghost-text.show{animation:ghostFade 1.9s ease forwards;}
+@keyframes ghostFade{0%{color:rgba(255,255,255,0.8);}60%{color:rgba(255,255,255,0.45);}100%{color:rgba(255,255,255,0);}}
+
+/* ════════════════════
+   SCREEN 1
+════════════════════ */
+#screen-1{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.title-wrap{text-align:center;margin-bottom:20px;}
+.title-wrap h1{font-family:'DM Serif Display',serif;font-size:clamp(2.8rem,6vw,4.4rem);letter-spacing:0.14em;text-shadow:0 2px 40px rgba(0,0,0,0.5);}
+.title-wrap p{font-size:0.7rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--text-dim);margin-top:4px;}
+.checkin-card{background:var(--ui-bg);border:1px solid var(--ui-border);backdrop-filter:blur(28px);border-radius:26px;padding:26px 30px;width:min(540px,93vw);display:flex;flex-direction:column;gap:20px;}
+.section-label{font-size:0.65rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+.char-row{display:flex;gap:11px;justify-content:center;}
+.char-card{flex:1;max-width:152px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.09);border-radius:18px;padding:13px 10px 10px;cursor:pointer;transition:all 0.22s ease;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
+.char-card:hover{background:rgba(255,255,255,0.1);transform:translateY(-3px);}
+.char-card.selected{border-color:var(--teal-light);background:rgba(61,184,200,0.16);}
+.char-card .char-name{font-size:0.68rem;letter-spacing:0.06em;color:var(--text-dim);}
+.char-card.selected .char-name{color:var(--teal-light);}
+.emotion-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.emotion-btn{background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.09);border-radius:12px;padding:10px 6px;cursor:pointer;transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--text-light);font-family:'DM Sans',sans-serif;}
+.emotion-btn .e-icon{font-size:1.35rem;}
+.emotion-btn .e-label{font-size:0.64rem;letter-spacing:0.04em;}
+.emotion-btn:hover{background:rgba(255,255,255,0.11);transform:translateY(-2px);}
+.emotion-btn.selected{border-color:var(--teal-light);background:rgba(61,184,200,0.18);}
+.slider-section{display:flex;flex-direction:column;gap:7px;}
+.intensity-display{text-align:center;font-size:1.85rem;font-weight:300;color:var(--teal-light);line-height:1;}
+.intensity-display span{font-size:0.7rem;color:var(--text-dim);}
+.intensity-slider{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:linear-gradient(to right,var(--teal-light),var(--water-mid),#06111e);outline:none;cursor:pointer;}
+.intensity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--teal);box-shadow:0 2px 10px rgba(0,0,0,0.4);cursor:pointer;transition:transform 0.15s;}
+.intensity-slider::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-labels{display:flex;justify-content:space-between;font-size:0.62rem;color:var(--text-dim);}
+.begin-btn{background:linear-gradient(135deg,var(--teal),var(--water-mid));border:none;border-radius:14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.83rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:15px 32px;cursor:pointer;width:100%;transition:all 0.25s ease;box-shadow:0 4px 24px rgba(42,127,168,0.4);opacity:0.35;pointer-events:none;}
+.begin-btn.ready{opacity:1;pointer-events:all;}
+.begin-btn.ready:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(42,127,168,0.6);}
+
+/* ════════════════════
+   SCREEN 2
+════════════════════ */
+#screen-2{display:flex;flex-direction:column;justify-content:space-between;padding:18px 22px;}
+
+.wave-top{display:flex;justify-content:space-between;align-items:center;gap:14px;}
+
+/* LEFT: bigger character card */
+.wave-info{
+  background:var(--ui-bg);border:1px solid var(--ui-border);
+  backdrop-filter:blur(20px);border-radius:16px;
+  padding:12px 18px;
+  display:flex;align-items:center;gap:14px;
+}
+.wave-char-svg{display:block;flex-shrink:0;}
+.wave-emotion-label{display:flex;flex-direction:column;gap:3px;}
+.wave-emotion-label .e-name{font-size:1rem;font-weight:500;line-height:1.2;}
+.wave-emotion-label .e-int{font-size:0.68rem;color:var(--text-dim);letter-spacing:0.1em;}
+
+/* RIGHT: distress gauge */
+.distress-wrap{
+  background:var(--ui-bg);border:1px solid var(--ui-border);
+  backdrop-filter:blur(20px);border-radius:16px;
+  padding:12px 18px 9px;
+  display:flex;flex-direction:column;align-items:center;
+  min-width:165px;
+}
+.distress-label{font-size:0.6rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1px;}
+.distress-number{font-size:1.8rem;font-weight:300;line-height:1;margin-top:-4px;transition:color 0.4s ease;color:var(--teal-light);}
+.distress-number.mid{color:#f0c050;}
+.distress-number.high{color:#e07050;}
+
+
+/* BOTTOM */
+.wave-bottom{display:flex;flex-direction:column;align-items:center;gap:8px;}
+
+.balance-section{
+  background:var(--ui-bg);border:1px solid var(--ui-border);
+  backdrop-filter:blur(20px);border-radius:16px;
+  padding:13px 22px 11px;width:min(460px,92vw);
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+}
+.presence-section{
+  background:var(--ui-bg);border:1px solid var(--ui-border);
+  backdrop-filter:blur(20px);border-radius:16px;
+  padding:14px 22px 12px;width:min(460px,92vw);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.presence-labels{
+  display:flex;justify-content:space-between;width:100%;
+  font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);
+}
+.presence-labels .pl-center{color:rgba(255,255,255,0.32);}
+/* gradient: red(checked-out) → orange → green(present) → orange → red(fighting) */
+.presence-track{
+  position:relative;width:100%;height:14px;border-radius:7px;overflow:visible;
+  background:linear-gradient(to right,
+    #d94040 0%, #e87030 14%, #f0b040 28%,
+    #5bc0a5 40%, #5bc0a5 60%,
+    #f0b040 72%, #e87030 86%, #d94040 100%
+  );
+  opacity:0.82;
+}
+.presence-track::before{content:'';position:absolute;inset:0;border-radius:7px;background:rgba(8,22,38,0.32);}
+.presence-track::after{content:'';position:absolute;left:50%;top:0;transform:translateX(-50%);width:3px;height:100%;background:rgba(255,255,255,0.2);border-radius:2px;}
+.presence-dot{
+  position:absolute;top:50%;transform:translate(-50%,-50%);
+  width:22px;height:22px;border-radius:50%;
+  background:#fff;border:3px solid var(--teal);
+  box-shadow:0 2px 10px rgba(0,0,0,0.5);
+  transition:left 0.14s ease,border-color 0.25s,box-shadow 0.25s;
+  left:50%;z-index:2;
+}
+.presence-dot.warning{border-color:#f0b040;box-shadow:0 2px 12px rgba(240,176,64,0.5);}
+.presence-dot.danger {border-color:#d94040;box-shadow:0 2px 14px rgba(217,64,64,0.6);}
+.presence-legend{display:flex;justify-content:center;gap:16px;font-size:0.57rem;color:var(--text-dim);letter-spacing:0.07em;}
+.legend-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+
+/* Spacebar key */
+.spacebar-wrap{
+  background:var(--ui-bg);border:1px solid var(--ui-border);
+  backdrop-filter:blur(20px);border-radius:14px;
+  padding:12px 26px;text-align:center;width:min(460px,92vw);
+}
+.spacebar-wrap p{font-size:0.71rem;color:var(--text-dim);line-height:1.75;letter-spacing:0.05em;}
+.spacebar-wrap strong{color:var(--text-light);font-weight:500;}
+.spacebar-key{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,0.09);
+  border:1.5px solid rgba(255,255,255,0.2);
+  border-radius:8px;padding:6px 36px;
+  font-size:0.7rem;color:var(--text-dim);
+  letter-spacing:0.12em;text-transform:uppercase;
+  margin-top:8px;transition:all 0.1s;
+  width:min(200px,60vw);
+}
+.spacebar-key.pressed{
+  background:rgba(61,184,200,0.3);
+  border-color:var(--teal-light);
+  color:var(--teal-light);
+  transform:scale(0.96);
+  box-shadow:0 0 16px rgba(61,184,200,0.3);
+}
+
+/* ════════════════════
+   SCREEN 3
+════════════════════ */
+#screen-3{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.resolution-card{background:var(--ui-bg);border:1px solid var(--ui-border);backdrop-filter:blur(28px);border-radius:26px;padding:36px 40px;width:min(460px,88vw);text-align:center;display:flex;flex-direction:column;gap:16px;align-items:center;overflow:visible;}
+.resolution-blob-wrap{animation:breathe 4s ease-in-out infinite;overflow:visible;display:flex;align-items:center;justify-content:center;width:100%;}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.resolution-msg{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(1.2rem,3vw,1.65rem);line-height:1.55;}
+.resolution-sub{font-size:0.76rem;font-weight:300;color:var(--text-dim);line-height:1.9;max-width:300px;}
+.resolution-divider{width:32px;height:1px;background:rgba(255,255,255,0.14);}
+.replay-row{display:flex;gap:10px;margin-top:4px;}
+.replay-btn{background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.13);border-radius:12px;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;padding:11px 20px;cursor:pointer;transition:all 0.2s ease;}
+.replay-btn:hover{background:rgba(255,255,255,0.13);transform:translateY(-2px);}
+.replay-btn.primary{background:linear-gradient(135deg,var(--teal),var(--water-mid));border-color:transparent;box-shadow:0 4px 20px rgba(42,127,168,0.4);}
+.fade-in{animation:fadeUp 0.65s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SCREEN 4 / 5 ── */
+#screen-4{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#screen-5{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+/* ── FLOATING CLOUD REMINDERS ── */
+.cloud-reminder{
+  position:fixed;top:0;left:0;pointer-events:none;z-index:8;
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  opacity:0;
+  transition:none;
+}
+.cloud-reminder.visible{
+  animation:cloudDrift linear forwards;
+}
+@keyframes cloudDrift{
+  0%  {opacity:0;  transform:translateX(0)   translateY(0);}
+  8%  {opacity:1;}
+  88% {opacity:1;}
+  100%{opacity:0;  transform:translateX(var(--cx)) translateY(var(--cy));}
+}
+.cloud-bubble{
+  background:rgba(255,255,255,0.16);
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.26);
+  border-radius:40px;
+  padding:7px 20px;
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-size:clamp(0.78rem,1.6vw,0.95rem);
+  color:rgba(255,255,255,0.9);
+  white-space:nowrap;
+  box-shadow:0 2px 16px rgba(0,0,0,0.14);
+  margin-top:-8px;
+}
+.cloud-puffs{
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.cloud-puffs span{
+  display:block;border-radius:50%;
+  background:rgba(255,255,255,0.22);
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.18);
+}
+
+/* ── BOX BREATH GUIDE ── */
+#breath-guide{
+  position:fixed;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  z-index:12;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+  opacity:0;transition:opacity 0.8s ease;
+}
+#breath-guide.show{opacity:1;}
+
+/* Outer progress ring */
+#breath-ring-wrap{
+  position:relative;width:110px;height:110px;
+  display:flex;align-items:center;justify-content:center;
+}
+#breath-svg{position:absolute;top:0;left:0;width:110px;height:110px;}
+#breath-arc{
+  stroke-dasharray:0 283;
+  stroke-dashoffset:0;
+  transition:none;
+  transform-origin:55px 55px;
+  transform:rotate(-90deg);
+}
+#breath-circle{
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle at 36% 34%, rgba(125,212,224,0.25), rgba(10,40,70,0.55));
+  border:1.5px solid rgba(125,212,224,0.35);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 5.2s ease-in-out, box-shadow 0.8s ease;
+  box-shadow:0 0 0px rgba(125,212,224,0);
+}
+#breath-circle.expanding{
+  transform:scale(1.35);
+  box-shadow:0 0 28px rgba(125,212,224,0.38);
+}
+#breath-circle.contracting{
+  transform:scale(1);
+  box-shadow:0 0 0px rgba(125,212,224,0);
+}
+#breath-count{
+  font-family:'DM Sans',sans-serif;
+  font-size:1.4rem;font-weight:300;
+  color:rgba(255,255,255,0.8);
+  transition:opacity 0.3s;
+}
+
+/* Phase label */
+#breath-phase-label{
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-size:1rem;
+  color:rgba(255,255,255,0.72);
+  letter-spacing:0.04em;
+  min-height:1.4em;
+  text-align:center;
+  transition:opacity 0.4s;
+}
+
+/* Round dots */
+#breath-rounds{
+  display:flex;gap:8px;
+}
+.breath-round-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(255,255,255,0.2);
+  border:1px solid rgba(255,255,255,0.25);
+  transition:background 0.4s,border-color 0.4s;
+}
+.breath-round-dot.done{
+  background:rgba(125,212,224,0.8);
+  border-color:rgba(125,212,224,0.9);
+}
+.breath-round-dot.active{
+  background:rgba(255,255,255,0.7);
+  border-color:rgba(255,255,255,0.9);
+}
+</style>
+</head>
+<body>
+
+<canvas id="ocean-canvas"></canvas>
+<canvas id="boat-canvas" width="360" height="260"></canvas>
+<div id="edge-pulse"></div>
+<div id="ghost-text"></div>
+<!-- Cloud reminders (spawned by JS) -->
+<div id="cloud-layer"></div>
+<!-- Box Breath guide -->
+<div id="breath-guide">
+  <div id="breath-ring-wrap">
+    <svg id="breath-svg" viewBox="0 0 110 110">
+      <!-- Track ring -->
+      <circle cx="55" cy="55" r="45" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+      <!-- Progress arc -->
+      <circle id="breath-arc" cx="55" cy="55" r="45" fill="none"
+        stroke="rgba(125,212,224,0.7)" stroke-width="3"
+        stroke-linecap="round" stroke-dasharray="0 283"/>
+    </svg>
+    <div id="breath-circle">
+      <div id="breath-count">5</div>
+    </div>
+  </div>
+  <div id="breath-phase-label">breathe in</div>
+  <div id="breath-rounds">
+    <div class="breath-round-dot active" id="bdot-0"></div>
+    <div class="breath-round-dot" id="bdot-1"></div>
+    <div class="breath-round-dot" id="bdot-2"></div>
+  </div>
+</div>
+
+<!-- ════ SCREEN 1 ════ -->
+<div class="screen active" id="screen-1">
+  <div class="title-wrap fade-in"><h1>TIDE</h1><p>Through Intensity, Discover Ease</p></div>
+  <div class="checkin-card fade-in">
+    <div>
+      <div class="section-label">Choose your companion</div>
+      <div class="char-row">
+        <div class="char-card selected" data-char="gloop" onclick="selectChar(this)">
+          <svg width="76" height="76" viewBox="0 0 80 80" id="char-preview-gloop"></svg>
+          <span class="char-name">Gloop</span>
+        </div>
+        <div class="char-card" data-char="mochi" onclick="selectChar(this)">
+          <svg width="76" height="76" viewBox="0 0 80 80" id="char-preview-mochi"></svg>
+          <span class="char-name">Mochi</span>
+        </div>
+        <div class="char-card" data-char="dune" onclick="selectChar(this)">
+          <svg width="76" height="76" viewBox="0 0 80 80" id="char-preview-dune"></svg>
+          <span class="char-name">Dune</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">What are you feeling right now?</div>
+      <div class="emotion-grid">
+        <button class="emotion-btn" data-emotion="Angry"       data-emo-key="angry"       onclick="selectEmotion(this)"><span class="e-icon">😤</span><span class="e-label">Angry</span></button>
+        <button class="emotion-btn" data-emotion="Sad"         data-emo-key="sad"         onclick="selectEmotion(this)"><span class="e-icon">😔</span><span class="e-label">Sad</span></button>
+        <button class="emotion-btn" data-emotion="Anxious"     data-emo-key="anxious"     onclick="selectEmotion(this)"><span class="e-icon">😰</span><span class="e-label">Anxious</span></button>
+        <button class="emotion-btn" data-emotion="Overwhelmed" data-emo-key="overwhelmed" onclick="selectEmotion(this)"><span class="e-icon">🌀</span><span class="e-label">Overwhelmed</span></button>
+        <button class="emotion-btn" data-emotion="Numb"        data-emo-key="numb"        onclick="selectEmotion(this)"><span class="e-icon">😶</span><span class="e-label">Numb</span></button>
+        <button class="emotion-btn" data-emotion="Scared"      data-emo-key="scared"      onclick="selectEmotion(this)"><span class="e-icon">😨</span><span class="e-label">Scared</span></button>
+      </div>
+    </div>
+    <div class="slider-section">
+      <div class="section-label">How intense does it feel right now?</div>
+      <div class="intensity-display" id="intensity-display">50 <span>/ 100</span></div>
+      <input type="range" min="0" max="100" value="50" class="intensity-slider" id="intensity-slider" oninput="updateIntensity(this.value)">
+      <div class="slider-labels"><span>calm</span><span>moderate</span><span>peak</span></div>
+    </div>
+    <button class="begin-btn" id="begin-btn" onclick="startGame()">Enter the Water</button>
+  </div>
+</div>
+
+<!-- ════ SCREEN 2 ════ -->
+<div class="screen" id="screen-2">
+
+  <div class="wave-top">
+    <!-- Character — bigger, vertically centered -->
+    <div class="wave-info">
+      <svg class="wave-char-svg" width="62" height="62" viewBox="0 0 80 80" id="wave-char-mini"></svg>
+      <div class="wave-emotion-label">
+        <div class="e-name" id="wave-emo-name">—</div>
+        <div class="e-int"  id="wave-emo-int">Stay with it</div>
+      </div>
+    </div>
+
+    <!-- Distress gauge -->
+    <div class="distress-wrap">
+      <div class="distress-label">Distress Level</div>
+      <svg viewBox="0 0 120 78" width="148" height="92">
+        <defs>
+          <linearGradient id="arc-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#5bc0a5"/>
+            <stop offset="35%"  stop-color="#f0c050"/>
+            <stop offset="65%"  stop-color="#e87030"/>
+            <stop offset="100%" stop-color="#d94040"/>
+          </linearGradient>
+        </defs>
+        <path d="M12,72 A48,48 0 0,1 108,72" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9" stroke-linecap="round"/>
+        <path d="M12,72 A48,48 0 0,1 108,72" fill="none" stroke="url(#arc-grad)" stroke-width="9" stroke-linecap="round" opacity="0.22"/>
+        <path id="distress-fill" d="M12,72 A48,48 0 0,1 108,72" fill="none" stroke="url(#arc-grad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 151"/>
+        <line id="distress-needle" x1="60" y1="70" x2="60" y2="28" stroke="white" stroke-width="2.5" stroke-linecap="round" style="transform-origin:60px 70px;transform:rotate(-90deg)"/>
+        <circle cx="60" cy="70" r="5.5" fill="white" opacity="0.9"/>
+        <g stroke="rgba(255,255,255,0.22)" stroke-width="1.5">
+          <line x1="12" y1="72" x2="16.5" y2="72"/><line x1="26" y1="38" x2="29.4" y2="41.4"/>
+          <line x1="60" y1="24" x2="60" y2="28.5"/><line x1="94" y1="38" x2="90.6" y2="41.4"/>
+          <line x1="108" y1="72" x2="103.5" y2="72"/>
+        </g>
+        <text x="8"   y="70" font-family="DM Sans,sans-serif" font-size="7" fill="rgba(255,255,255,0.35)" text-anchor="middle">0</text>
+        <text x="60"  y="20" font-family="DM Sans,sans-serif" font-size="7" fill="rgba(255,255,255,0.35)" text-anchor="middle">50</text>
+        <text x="114" y="70" font-family="DM Sans,sans-serif" font-size="7" fill="rgba(255,255,255,0.35)" text-anchor="middle">100</text>
+      </svg>
+      <div class="distress-number" id="distress-number">0</div>
+    </div>
+  </div>
+
+  <!-- Presence bar -->
+  <div class="wave-bottom">
+    <div class="presence-section">
+      <div class="presence-labels">
+        <span>← Ignoring</span>
+        <span class="pl-center">present</span>
+        <span>Controlling →</span>
+      </div>
+      <div class="presence-track">
+        <div class="presence-dot" id="presence-dot"></div>
+      </div>
+      <div class="presence-legend">
+        <span><span class="legend-dot" style="background:#d94040"></span>lost</span>
+        <span><span class="legend-dot" style="background:#f0b040"></span>drifting</span>
+        <span><span class="legend-dot" style="background:#5bc0a5"></span>present</span>
+      </div>
+    </div>
+
+    <div class="spacebar-wrap">
+      <p>
+        <strong>Tap spacebar</strong> to breathe and stay present.<br>
+        Holding = fighting the emotional wave · Never pressing = ignoring the emotional wave<br>
+        <span style="color:rgba(255,255,255,0.22);font-size:0.63rem;">The wave passes on its own. You only need to stay present.</span>
+      </p>
+      <div><div class="spacebar-key" id="spacebar-key">space</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SCREEN 3 — REFLECTION ════ -->
+<div class="screen" id="screen-3">
+  <div class="resolution-card fade-in">
+    <div class="resolution-blob-wrap">
+      <svg width="96" height="96" viewBox="0 0 80 80" style="overflow:visible;display:block;margin:0 auto;" id="resolution-char"></svg>
+    </div>
+    <div class="resolution-msg">"Notice what happened<br>when you stayed."</div>
+    <div class="resolution-divider"></div>
+    <div class="resolution-sub">The tides came, peaked, and passed on their own.<br>Because that's what waves do — they come and go.</div>
+    <div class="replay-row">
+      <button class="replay-btn primary" onclick="goToEndCheckin()">How do you feel now?</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SCREEN 4 — END CHECK-IN ════ -->
+<div class="screen" id="screen-4">
+  <div class="title-wrap fade-in" style="margin-bottom:18px;">
+    <h1 style="font-size:clamp(2rem,4vw,3rem);">How are you now?</h1>
+    <p>The wave has passed. Check in with yourself.</p>
+  </div>
+  <div class="checkin-card fade-in" style="gap:18px;">
+
+    <!-- Character display (read-only, shows selected char) -->
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 4px;">
+      <svg width="72" height="72" viewBox="0 0 80 80" id="end-char-display"></svg>
+      <div>
+        <div style="font-size:0.65rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;">Your companion</div>
+        <div style="font-size:1rem;font-weight:500;" id="end-char-name">Gloop</div>
+      </div>
+    </div>
+
+    <!-- Emotion — same grid, re-selectable -->
+    <div>
+      <div class="section-label">How are you feeling now?</div>
+      <div class="emotion-grid" id="end-emotion-grid">
+        <button class="emotion-btn" data-emotion="Angry"       data-emo-key="angry"       onclick="selectEndEmotion(this)"><span class="e-icon">😤</span><span class="e-label">Angry</span></button>
+        <button class="emotion-btn" data-emotion="Sad"         data-emo-key="sad"         onclick="selectEndEmotion(this)"><span class="e-icon">😔</span><span class="e-label">Sad</span></button>
+        <button class="emotion-btn" data-emotion="Anxious"     data-emo-key="anxious"     onclick="selectEndEmotion(this)"><span class="e-icon">😰</span><span class="e-label">Anxious</span></button>
+        <button class="emotion-btn" data-emotion="Overwhelmed" data-emo-key="overwhelmed" onclick="selectEndEmotion(this)"><span class="e-icon">🌀</span><span class="e-label">Overwhelmed</span></button>
+        <button class="emotion-btn" data-emotion="Numb"        data-emo-key="numb"        onclick="selectEndEmotion(this)"><span class="e-icon">😶</span><span class="e-label">Numb</span></button>
+        <button class="emotion-btn" data-emotion="Scared"      data-emo-key="scared"      onclick="selectEndEmotion(this)"><span class="e-icon">😨</span><span class="e-label">Scared</span></button>
+      </div>
+    </div>
+
+    <!-- End intensity slider -->
+    <div class="slider-section">
+      <div class="section-label">How intense does it feel now?</div>
+      <div class="intensity-display" id="end-intensity-display">— <span style="font-size:0.7rem;color:var(--text-dim);">/ 100</span></div>
+      <input type="range" min="0" max="100" value="50" class="intensity-slider" id="end-intensity-slider" oninput="updateEndIntensity(this.value)">
+      <div class="slider-labels"><span>calm</span><span>moderate</span><span>peak</span></div>
+    </div>
+
+    <!-- Before / After comparison -->
+    <div id="end-comparison" style="display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px 18px;display:flex;flex-direction:column;gap:6px;">
+      <div style="font-size:0.62rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);">Before → After</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="end-compare-before" style="font-size:1.5rem;font-weight:300;color:#e07050;"></span>
+        <span style="color:var(--text-dim);">→</span>
+        <span id="end-compare-after"  style="font-size:1.5rem;font-weight:300;color:var(--teal-light);"></span>
+        <span id="end-compare-delta"  style="font-size:0.75rem;color:var(--text-dim);margin-left:4px;"></span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="replay-btn" style="flex:1" onclick="goScreen(1)">Try again</button>
+      <button class="replay-btn primary" style="flex:1" id="end-done-btn" onclick="showDone()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SCREEN 5 — DONE ════ -->
+<div class="screen" id="screen-5">
+  <div class="resolution-card fade-in">
+    <div class="resolution-blob-wrap">
+      <svg width="110" height="110" viewBox="0 0 80 80" style="overflow:visible;display:block;margin:0 auto;" id="done-char"></svg>
+    </div>
+    <div class="resolution-msg" id="done-msg">"You stayed.<br>That was enough."</div>
+    <div class="resolution-divider"></div>
+    <div class="resolution-sub" id="done-sub">Every time you stay with it, you build the skill.</div>
+    <div class="replay-row">
+      <button class="replay-btn"         onclick="goScreen(1)">Practice again</button>
+      <button class="replay-btn primary" onclick="goScreen(1)">Done for now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════
+// STATE
+// ══════════════════════════════
+let selChar='gloop', selEmotion=null, selEmoKey=null, intensity=50;
+
+// Wave timing
+let waveActive=false, waveTime=0, waveDuration=75;
+
+// Presence (balance)
+// -1 = checked out (avoidance), 0 = present (correct), +1 = fighting (over-control)
+let presencePos=0;
+let spaceHeld=false;
+let spaceHoldFrames=0;   // how long space has been held this press
+let noInputFrames=0;     // frames since last spacebar press
+let recentTaps=0;        // rolling count of taps in last ~3s window
+let tapDecayTimer=0;     // timer to decay recentTaps
+let waveInterval=null;
+
+// Visuals
+let targetWH=0.15, curWH=0.15, targetDark=0, curDark=0, wobbleAmt=0;
+let boatTilt=0, boatBob=0, boatT=0;
+let breathScale=1.0, breathScaleTarget=1.0;
+
+// Cached boat character image
+let boatCharKey='';
+
+// Audio
+let audioCtx=null, oscNodes=[];
+
+// Feedback
+let ghostCD=0, pulseCD=0;
+
+// ══════════════════════════════
+// FACE DATA
+// ══════════════════════════════
+const FACES={
+  neutral:    {lEye:[32,42],rEye:[48,42],mouth:'M33 51 Q40 54 47 51',brows:null,     pupils:0, tear:false},
+  angry:      {lEye:[32,42],rEye:[48,42],mouth:'M33 54 Q40 50 47 54',brows:'angry',  pupils:0, tear:false},
+  sad:        {lEye:[32,44],rEye:[48,44],mouth:'M33 54 Q40 50 47 54',brows:'sad',    pupils:2, tear:true},
+  anxious:    {lEye:[31,41],rEye:[49,41],mouth:'M32 52 Q36 57 40 52 Q44 57 48 52',brows:'worried',pupils:-1,tear:false},
+  overwhelmed:{lEye:[30,42],rEye:[50,42],mouth:'M32 54 Q40 49 48 54',brows:'worried',pupils:0, tear:true},
+  numb:       {lEye:[32,43],rEye:[48,43],mouth:'M33 52 Q40 52 47 52',brows:null,     pupils:1, tear:false},
+  scared:     {lEye:[31,42],rEye:[49,42],mouth:'M33 53 Q40 57 47 53',brows:'worried',pupils:-2,tear:false},
+};
+
+function buildCharSVG(charId,faceKey,sz=80){
+  const f=FACES[faceKey]||FACES.neutral, s=sz/80;
+  const ec=charId==='gloop'?'#0d4a55':charId==='mochi'?'#5a1a5a':'#6b3a00';
+  const uid=charId+sz; // unique id suffix per size to avoid gradient id collisions
+  let body='';
+  if(charId==='gloop'){
+    body=`<defs><radialGradient id="gg${uid}" cx="40%" cy="35%" r="60%"><stop offset="0%" stop-color="#7de8f0"/><stop offset="100%" stop-color="#1a9aaa"/></radialGradient></defs>
+    <ellipse cx="${40*s}" cy="${44*s}" rx="${28*s}" ry="${26*s}" fill="url(#gg${uid})"/>
+    <ellipse cx="${33*s}" cy="${30*s}" rx="${9*s}" ry="${7*s}" fill="rgba(255,255,255,0.22)"/>
+    <ellipse cx="${31*s}" cy="${19*s}" rx="${5*s}" ry="${6*s}" fill="#1a9aaa"/>
+    <ellipse cx="${49*s}" cy="${17*s}" rx="${4*s}" ry="${5*s}" fill="#1a9aaa"/>`;
+  } else if(charId==='mochi'){
+    body=`<defs><radialGradient id="mg${uid}" cx="38%" cy="32%" r="62%"><stop offset="0%" stop-color="#f0b8e8"/><stop offset="100%" stop-color="#b060b0"/></radialGradient></defs>
+    <ellipse cx="${40*s}" cy="${46*s}" rx="${26*s}" ry="${24*s}" fill="url(#mg${uid})"/>
+    <ellipse cx="${40*s}" cy="${28*s}" rx="${18*s}" ry="${12*s}" fill="url(#mg${uid})"/>
+    <ellipse cx="${32*s}" cy="${27*s}" rx="${8*s}" ry="${6*s}" fill="rgba(255,255,255,0.18)"/>
+    <ellipse cx="${18*s}" cy="${28*s}" rx="${6*s}" ry="${8*s}" fill="#b060b0" transform="rotate(-15 ${18*s} ${28*s})"/>
+    <ellipse cx="${62*s}" cy="${28*s}" rx="${6*s}" ry="${8*s}" fill="#b060b0" transform="rotate(15 ${62*s} ${28*s})"/>
+    <ellipse cx="${18*s}" cy="${28*s}" rx="${3*s}" ry="${5*s}" fill="#f0b8e8" transform="rotate(-15 ${18*s} ${28*s})"/>
+    <ellipse cx="${62*s}" cy="${28*s}" rx="${3*s}" ry="${5*s}" fill="#f0b8e8" transform="rotate(15 ${62*s} ${28*s})"/>`;
+  } else {
+    body=`<defs><radialGradient id="dg${uid}" cx="38%" cy="30%" r="65%"><stop offset="0%" stop-color="#f5d080"/><stop offset="100%" stop-color="#c07820"/></radialGradient></defs>
+    <path d="M${14*s},${52*s} Q${10*s},${36*s} ${20*s},${26*s} Q${28*s},${16*s} ${40*s},${18*s} Q${54*s},${16*s} ${62*s},${28*s} Q${70*s},${38*s} ${66*s},${52*s} Q${60*s},${66*s} ${40*s},${66*s} Q${20*s},${66*s} ${14*s},${52*s}Z" fill="url(#dg${uid})"/>
+    <ellipse cx="${30*s}" cy="${26*s}" rx="${9*s}" ry="${7*s}" fill="rgba(255,255,255,0.18)"/>
+    <circle cx="${26*s}" cy="${19*s}" r="${6*s}" fill="#c07820"/>
+    <circle cx="${40*s}" cy="${15*s}" r="${5*s}" fill="#c07820"/>
+    <circle cx="${54*s}" cy="${19*s}" r="${6*s}" fill="#c07820"/>
+    <circle cx="${26*s}" cy="${19*s}" r="${4*s}" fill="#f5d080" opacity="0.45"/>
+    <circle cx="${40*s}" cy="${15*s}" r="${3*s}" fill="#f5d080" opacity="0.45"/>
+    <circle cx="${54*s}" cy="${19*s}" r="${4*s}" fill="#f5d080" opacity="0.45"/>`;
+  }
+  const [lx,ly]=[f.lEye[0]*s,f.lEye[1]*s],[rx,ry]=[f.rEye[0]*s,f.rEye[1]*s];
+  const er=3.8*s,pr=1.5*s;
+  let brows='';
+  if(f.brows==='angry')brows=`<line x1="${28*s}" y1="${34*s}" x2="${38*s}" y2="${37*s}" stroke="${ec}" stroke-width="${2*s}" stroke-linecap="round"/><line x1="${52*s}" y1="${34*s}" x2="${42*s}" y2="${37*s}" stroke="${ec}" stroke-width="${2*s}" stroke-linecap="round"/>`;
+  else if(f.brows==='sad'||f.brows==='worried')brows=`<path d="M${28*s},${36*s} Q${33*s},${33*s} ${38*s},${36*s}" stroke="${ec}" stroke-width="${1.8*s}" fill="none" stroke-linecap="round"/><path d="M${52*s},${36*s} Q${47*s},${33*s} ${42*s},${36*s}" stroke="${ec}" stroke-width="${1.8*s}" fill="none" stroke-linecap="round"/>`;
+  const mouth=f.mouth.replace(/(-?\d+\.?\d*)/g,m=>parseFloat(m)*s);
+  const tear=f.tear?`<path d="M${lx},${ly+er+2*s} Q${lx-3*s},${ly+er+9*s} ${lx},${ly+er+14*s} Q${lx+3*s},${ly+er+9*s} ${lx},${ly+er+2*s}" fill="#a0d8ef"/>`:'';
+  return `${body}${brows}
+    <circle cx="${lx}" cy="${ly}" r="${er}" fill="${ec}"/>
+    <circle cx="${rx}" cy="${ry}" r="${er}" fill="${ec}"/>
+    <circle cx="${lx+pr}" cy="${ly+f.pupils*s-pr*0.5}" r="${pr}" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="${rx+pr}" cy="${ry+f.pupils*s-pr*0.5}" r="${pr}" fill="rgba(255,255,255,0.8)"/>
+    ${tear}
+    <path d="${mouth}" stroke="${ec}" stroke-width="${2*s}" fill="none" stroke-linecap="round"/>`;
+}
+
+function updateCharPreviews(){
+  ['gloop','mochi','dune'].forEach(id=>{
+    const el=document.getElementById(`char-preview-${id}`);
+    if(el)el.innerHTML=buildCharSVG(id,selEmoKey||'neutral');
+  });
+}
+function setWaveMiniChar(){
+  const el=document.getElementById('wave-char-mini');
+  if(el)el.innerHTML=buildCharSVG(selChar,selEmoKey||'neutral',62);
+}
+function setResolutionChar(){
+  const el=document.getElementById('resolution-char');
+  if(el)el.innerHTML=buildCharSVG(selChar,'neutral',80);
+}
+
+// ══════════════════════════════
+// BOAT CHARACTER — direct canvas 2D drawing
+// Draws character shapes directly via canvas API. Fully synchronous, no SVG/Image needed.
+// ══════════════════════════════
+function drawCharDirect(ctx, charId, faceKey, cx, cy, sz, bScale=1.0){
+  const s = sz / 80;
+  const f = FACES[faceKey] || FACES.neutral;
+  const ec = charId==='gloop' ? '#0d4a55' : charId==='mochi' ? '#5a1a5a' : '#6b3a00';
+
+  ctx.save();
+  // Apply breath scale from center of character (40,40 in local space)
+  ctx.translate(cx, cy);
+  ctx.scale(bScale, bScale);
+  ctx.translate(-40*s, -40*s);
+
+  if(charId === 'gloop'){
+    // Body
+    const g = ctx.createRadialGradient(36*s,32*s,2*s, 40*s,44*s,30*s);
+    g.addColorStop(0,'#7de8f0'); g.addColorStop(1,'#1a9aaa');
+    ctx.beginPath(); ctx.ellipse(40*s,44*s,28*s,26*s,0,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+    // Shine
+    ctx.beginPath(); ctx.ellipse(33*s,30*s,9*s,7*s,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fill();
+    // Antennae
+    ctx.beginPath(); ctx.ellipse(31*s,19*s,5*s,6*s,0,0,Math.PI*2);
+    ctx.fillStyle='#1a9aaa'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(49*s,17*s,4*s,5*s,0,0,Math.PI*2);
+    ctx.fillStyle='#1a9aaa'; ctx.fill();
+  } else if(charId === 'mochi'){
+    const g = ctx.createRadialGradient(36*s,30*s,2*s, 40*s,40*s,30*s);
+    g.addColorStop(0,'#f0b8e8'); g.addColorStop(1,'#b060b0');
+    // Body
+    ctx.beginPath(); ctx.ellipse(40*s,46*s,26*s,24*s,0,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+    // Head
+    ctx.beginPath(); ctx.ellipse(40*s,28*s,18*s,12*s,0,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+    // Shine
+    ctx.beginPath(); ctx.ellipse(32*s,27*s,8*s,6*s,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fill();
+    // Ears outer
+    ctx.save(); ctx.translate(18*s,28*s); ctx.rotate(-15*Math.PI/180);
+    ctx.beginPath(); ctx.ellipse(0,0,6*s,8*s,0,0,Math.PI*2);
+    ctx.fillStyle='#b060b0'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,0,3*s,5*s,0,0,Math.PI*2);
+    ctx.fillStyle='#f0b8e8'; ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(62*s,28*s); ctx.rotate(15*Math.PI/180);
+    ctx.beginPath(); ctx.ellipse(0,0,6*s,8*s,0,0,Math.PI*2);
+    ctx.fillStyle='#b060b0'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,0,3*s,5*s,0,0,Math.PI*2);
+    ctx.fillStyle='#f0b8e8'; ctx.fill(); ctx.restore();
+  } else {
+    // Dune
+    const g = ctx.createRadialGradient(35*s,28*s,2*s, 40*s,42*s,32*s);
+    g.addColorStop(0,'#f5d080'); g.addColorStop(1,'#c07820');
+    ctx.beginPath();
+    ctx.moveTo(14*s,52*s); ctx.quadraticCurveTo(10*s,36*s,20*s,26*s);
+    ctx.quadraticCurveTo(28*s,16*s,40*s,18*s); ctx.quadraticCurveTo(54*s,16*s,62*s,28*s);
+    ctx.quadraticCurveTo(70*s,38*s,66*s,52*s); ctx.quadraticCurveTo(60*s,66*s,40*s,66*s);
+    ctx.quadraticCurveTo(20*s,66*s,14*s,52*s);
+    ctx.fillStyle=g; ctx.fill();
+    // Shine
+    ctx.beginPath(); ctx.ellipse(30*s,26*s,9*s,7*s,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fill();
+    // Bumps
+    [[26,19,6],[40,15,5],[54,19,6]].forEach(([bx2,by2,br])=>{
+      ctx.beginPath(); ctx.arc(bx2*s,by2*s,br*s,0,Math.PI*2);
+      ctx.fillStyle='#c07820'; ctx.fill();
+      ctx.beginPath(); ctx.arc(bx2*s,by2*s,(br-2)*s,0,Math.PI*2);
+      ctx.fillStyle='rgba(245,208,128,0.45)'; ctx.fill();
+    });
+  }
+
+  // Eyes
+  const [lx,ly]=[f.lEye[0]*s,f.lEye[1]*s],[rx,ry]=[f.rEye[0]*s,f.rEye[1]*s];
+  const er=3.8*s, pr=1.5*s;
+
+  // Brows
+  ctx.strokeStyle=ec; ctx.lineWidth=1.8*s; ctx.lineCap='round';
+  if(f.brows==='angry'){
+    ctx.beginPath();ctx.moveTo(28*s,34*s);ctx.lineTo(38*s,37*s);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(52*s,34*s);ctx.lineTo(42*s,37*s);ctx.stroke();
+  } else if(f.brows==='sad'||f.brows==='worried'){
+    ctx.beginPath();ctx.moveTo(28*s,36*s);ctx.quadraticCurveTo(33*s,33*s,38*s,36*s);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(52*s,36*s);ctx.quadraticCurveTo(47*s,33*s,42*s,36*s);ctx.stroke();
+  }
+
+  // Eye whites
+  ctx.fillStyle=ec;
+  ctx.beginPath();ctx.arc(lx,ly,er,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(rx,ry,er,0,Math.PI*2);ctx.fill();
+  // Pupils
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.beginPath();ctx.arc(lx+pr,ly+f.pupils*s-pr*0.5,pr,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(rx+pr,ry+f.pupils*s-pr*0.5,pr,0,Math.PI*2);ctx.fill();
+
+  // Tear
+  if(f.tear){
+    ctx.beginPath();
+    ctx.moveTo(lx,ly+er+2*s);
+    ctx.quadraticCurveTo(lx-3*s,ly+er+8*s,lx,ly+er+13*s);
+    ctx.quadraticCurveTo(lx+3*s,ly+er+8*s,lx,ly+er+2*s);
+    ctx.fillStyle='#a0d8ef'; ctx.fill();
+  }
+
+  // Mouth
+  const mouthStr = f.mouth.replace(/(-?\d+\.?\d*)/g, m=>parseFloat(m)*s);
+  const mp = mouthStr.trim().split(/[MQZ ]+/).filter(Boolean);
+  // parse and draw mouth path
+  ctx.strokeStyle=ec; ctx.lineWidth=2*s; ctx.lineCap='round';
+  ctx.beginPath();
+  // Parse the mouth path string directly
+  const rawMouth = f.mouth;
+  const parts = rawMouth.match(/[MQ]\s*[\d.\s-]+/g)||[];
+  parts.forEach((part,i)=>{
+    const nums = part.slice(1).trim().split(/\s+/).map(n=>parseFloat(n)*s);
+    if(part[0]==='M') ctx.moveTo(nums[0],nums[1]);
+    else if(part[0]==='Q') ctx.quadraticCurveTo(nums[0],nums[1],nums[2],nums[3]);
+  });
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ══════════════════════════════
+// OCEAN CANVAS
+// ══════════════════════════════
+const oc=document.getElementById('ocean-canvas'),ox=oc.getContext('2d');
+let cW,cH;
+function resizeOcean(){cW=oc.width=window.innerWidth;cH=oc.height=window.innerHeight;}
+window.addEventListener('resize',resizeOcean);
+resizeOcean();
+
+let wavePhase=0;
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function drawOcean(){
+  const t=performance.now()/1000;
+  wavePhase+=0.007+curWH*0.01;
+  const d=curDark;
+  // Sky
+  const sky=ox.createLinearGradient(0,0,0,cH*0.52);
+  sky.addColorStop(0,`rgb(${lerp(195,15,d)},${lerp(140,22,d)},${lerp(90,35,d)})`);
+  sky.addColorStop(0.55,`rgb(${lerp(230,18,d)},${lerp(175,45,d)},${lerp(105,60,d)})`);
+  sky.addColorStop(1,`rgb(${lerp(175,12,d)},${lerp(205,48,d)},${lerp(225,72,d)})`);
+  ox.fillStyle=sky;ox.fillRect(0,0,cW,cH*0.52);
+  // Sun
+  const sx=cW*0.66,sy=cH*0.16,sg=ox.createRadialGradient(sx,sy,0,sx,sy,110);
+  sg.addColorStop(0,`rgba(${lerp(255,200,d)},${lerp(225,175,d)},${lerp(130,75,d)},${lerp(0.55,0.15,d)})`);
+  sg.addColorStop(1,'rgba(0,0,0,0)');
+  ox.fillStyle=sg;ox.beginPath();ox.arc(sx,sy,110,0,Math.PI*2);ox.fill();
+  // Horizon
+  const hy=cH*0.46,hg=ox.createLinearGradient(0,hy-50,0,hy+40);
+  hg.addColorStop(0,'rgba(0,0,0,0)');
+  hg.addColorStop(0.5,`rgba(${lerp(245,55,d)},${lerp(165,82,d)},${lerp(85,95,d)},${lerp(0.3,0.07,d)})`);
+  hg.addColorStop(1,'rgba(0,0,0,0)');
+  ox.fillStyle=hg;ox.fillRect(0,hy-50,cW,90);
+  // Water
+  const wt=cH*0.45,wh=curWH;
+  const wg=ox.createLinearGradient(0,wt,0,cH);
+  wg.addColorStop(0,`rgb(${lerp(44,11,wh*0.8+d*0.25)},${lerp(130,42,wh*0.8+d*0.25)},${lerp(172,62,wh*0.8+d*0.25)})`);
+  wg.addColorStop(0.45,`rgb(${lerp(26,9,wh+d*0.35)},${lerp(94,22,wh+d*0.35)},${lerp(135,38,wh+d*0.35)})`);
+  wg.addColorStop(1,`rgb(${lerp(13,4,wh+d*0.45)},${lerp(48,11,wh+d*0.45)},${lerp(76,16,wh+d*0.45)})`);
+  ox.fillStyle=wg;ox.fillRect(0,wt,cW,cH-wt);
+  // Wave layers
+  for(let w=0;w<6;w++){
+    const wf=w/6,yb=wt+(cH-wt)*(wf*0.62+0.04);
+    const amp=(16+curWH*80)*(1-wf*0.42)+Math.sin(performance.now()/1000*1.8+w*1.1)*wobbleAmt*6;
+    const freq=0.0075+wf*0.004,spd=wavePhase*(1+wf*0.55),alpha=lerp(0.09,0.3,curWH)*(1-wf*0.28);
+    ox.beginPath();ox.moveTo(0,yb);
+    for(let x=0;x<=cW;x+=4){const y=yb+Math.sin(x*freq+spd)*amp+Math.sin(x*freq*1.9+spd*1.4)*amp*0.28;ox.lineTo(x,y);}
+    ox.lineTo(cW,cH);ox.lineTo(0,cH);ox.closePath();
+    const wc=ox.createLinearGradient(0,yb-amp,0,yb+amp);
+    wc.addColorStop(0,`rgba(${lerp(130,210,1-d)},${lerp(225,242,1-d)},${lerp(245,255,1-d)},${alpha})`);
+    wc.addColorStop(1,'rgba(18,58,92,0)');
+    ox.fillStyle=wc;ox.fill();
+  }
+  // Shore
+  const shoreY=cH*0.77,sw=Math.sin(t*0.45)*5;
+  const shg=ox.createLinearGradient(0,shoreY,0,cH);
+  shg.addColorStop(0,`rgba(${lerp(205,142,d)},${lerp(182,122,d)},${lerp(132,82,d)},0.92)`);
+  shg.addColorStop(0.4,`rgba(${lerp(188,132,d)},${lerp(162,102,d)},${lerp(112,67,d)},1)`);
+  shg.addColorStop(1,`rgba(${lerp(172,122,d)},${lerp(146,92,d)},${lerp(97,57,d)},1)`);
+  ox.fillStyle=shg;ox.beginPath();ox.moveTo(0,cH);
+  ox.quadraticCurveTo(cW*0.3,shoreY-8+sw,cW*0.6,shoreY+6);
+  ox.quadraticCurveTo(cW*0.8,shoreY+13,cW,shoreY+sw);
+  ox.lineTo(cW,cH);ox.closePath();ox.fill();
+  ox.beginPath();ox.moveTo(0,shoreY+sw);
+  for(let x=0;x<=cW;x+=4)ox.lineTo(x,shoreY+Math.sin(x*0.05+t*2.2)*4+sw);
+  ox.strokeStyle=`rgba(255,255,255,${lerp(0.26,0.55,curWH)})`;ox.lineWidth=2;ox.stroke();
+  if(Math.random()<0.22+curWH*0.3){
+    const px=Math.random()*cW,py=wt+Math.random()*(shoreY-wt-70);
+    ox.beginPath();ox.arc(px,py,1.3,0,Math.PI*2);
+    ox.fillStyle=`rgba(255,255,255,${0.25+Math.random()*0.35})`;ox.fill();
+  }
+  curWH=lerp(curWH,targetWH,0.016);
+  curDark=lerp(curDark,targetDark,0.016);
+  wobbleAmt=lerp(wobbleAmt,Math.abs(presencePos)*0.55*curWH,0.08);
+  requestAnimationFrame(drawOcean);
+}
+drawOcean();
+
+// ══════════════════════════════
+// BOAT CANVAS
+// ══════════════════════════════
+const bc=document.getElementById('boat-canvas'),bx=bc.getContext('2d');
+let boatTiltTarget=0,boatBobTarget=0;
+
+function drawBoat(){
+  boatT+=0.038;
+  const t=boatT;
+  boatTiltTarget=presencePos*(7+curWH*18);
+  boatBobTarget=Math.sin(t*(0.65+curWH*0.9))*(5+curWH*18);
+  boatTilt=lerp(boatTilt,boatTiltTarget,0.06);
+  boatBob=lerp(boatBob,boatBobTarget,0.06);
+  breathScale=lerp(breathScale,breathScaleTarget,0.04);
+
+  bx.clearRect(0,0,bc.width,bc.height);
+  bx.save();
+  bx.translate(bc.width/2, bc.height*0.62+boatBob);
+  bx.rotate(boatTilt*Math.PI/180);
+
+  // Shadow
+  bx.beginPath();bx.ellipse(0,58,74,13,0,0,Math.PI*2);
+  bx.fillStyle='rgba(0,0,0,0.18)';bx.fill();
+
+  // Hull
+  bx.beginPath();bx.moveTo(-70,22);
+  bx.quadraticCurveTo(-74,46,-52,56);
+  bx.lineTo(52,56);
+  bx.quadraticCurveTo(74,46,70,22);
+  bx.closePath();
+  const hG=bx.createLinearGradient(0,20,0,56);
+  hG.addColorStop(0,'#c08030');hG.addColorStop(1,'#7a4a10');
+  bx.fillStyle=hG;bx.fill();
+
+  // Plank lines
+  bx.strokeStyle='rgba(0,0,0,0.13)';bx.lineWidth=1;
+  [-32,-11,11,32].forEach(x=>{bx.beginPath();bx.moveTo(x,22);bx.quadraticCurveTo(x+2,40,x,56);bx.stroke();});
+
+  // Rim
+  bx.beginPath();bx.moveTo(-70,22);bx.lineTo(70,22);
+  bx.strokeStyle='#e8a040';bx.lineWidth=3;bx.stroke();
+
+  // Bench
+  bx.beginPath();bx.rect(-32,15,64,8);
+  const bG=bx.createLinearGradient(0,15,0,23);
+  bG.addColorStop(0,'#d49040');bG.addColorStop(1,'#a86020');
+  bx.fillStyle=bG;bx.fill();
+
+  // Character — drawn directly via canvas 2D (synchronous, always visible)
+  // breathScale makes the character visually inhale/exhale
+  drawCharDirect(bx, selChar, selEmoKey||'neutral', 0, -10, 62, breathScale);
+
+  bx.restore();
+  requestAnimationFrame(drawBoat);
+}
+drawBoat();
+
+// ══════════════════════════════
+// DISTRESS GAUGE
+// Arc: 180° sweep, r=48, total length ≈ 150.8
+// Needle: -90deg = 0, 0deg = 50, +90deg = 100
+// ══════════════════════════════
+const ARC_LEN=150.8;
+
+function updateDistressGauge(val){
+  val=Math.max(0,Math.min(100,val));
+  const deg=(val/100)*180-90;
+  document.getElementById('distress-needle').style.transform=`rotate(${deg}deg)`;
+  const filled=(val/100)*ARC_LEN;
+  document.getElementById('distress-fill').setAttribute('stroke-dasharray',`${filled} ${ARC_LEN}`);
+  const numEl=document.getElementById('distress-number');
+  numEl.textContent=Math.round(val);
+  numEl.className='distress-number'+(val>=65?' high':val>=38?' mid':'');
+}
+
+
+// ══════════════════════════════
+// PRESENCE DOT
+// ══════════════════════════════
+function updatePresenceDot(){
+  const pct=5+((presencePos+1)/2)*90;
+  const dot=document.getElementById('presence-dot');
+  dot.style.left=pct+'%';
+  const abs=Math.abs(presencePos);
+  dot.className='presence-dot'+(abs>0.65?' danger':abs>0.35?' warning':'');
+}
+
+// ══════════════════════════════
+// FEEDBACK
+// ══════════════════════════════
+function triggerPulse(){
+  if(pulseCD>0)return;pulseCD=20;
+  const ep=document.getElementById('edge-pulse');
+  ep.classList.remove('pulse');void ep.offsetWidth;ep.classList.add('pulse');
+  setTimeout(()=>ep.classList.remove('pulse'),1000);
+}
+function showGhost(msg){
+  if(ghostCD>0)return;ghostCD=30;
+  const gt=document.getElementById('ghost-text');
+  gt.textContent=msg;gt.classList.remove('show');void gt.offsetWidth;gt.classList.add('show');
+}
+
+// ══════════════════════════════
+// AUDIO
+// ══════════════════════════════
+function initAudio(){if(audioCtx)return;audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function playAmbience(intVal){
+  if(!audioCtx)return;stopAmbience();
+
+  // ── BINAURAL BEAT DESIGN (evidence-based) ──
+  // Carrier: 200 Hz left / 210 Hz right → 10 Hz alpha beat (relaxation, calm focus)
+  // Research: alpha (8-13 Hz) is most studied for anxiety reduction (MDPI 2024)
+  // Carrier 200 Hz is within the 200-900 Hz evidence-based range
+  // Requires stereo — each oscillator routed to L or R only via ChannelMerger
+
+  const merger = audioCtx.createChannelMerger(2);
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.09;
+  merger.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  // Left ear: 200 Hz carrier
+  const leftOsc = audioCtx.createOscillator();
+  const leftGain = audioCtx.createGain();
+  const leftSplitter = audioCtx.createChannelSplitter(1);
+  leftOsc.type = 'sine';
+  leftOsc.frequency.value = 200;
+  leftGain.gain.value = 0.5;
+  leftOsc.connect(leftGain);
+  leftGain.connect(merger, 0, 0); // left channel
+  leftOsc.start();
+  oscNodes.push(leftOsc);
+
+  // Right ear: 210 Hz carrier (10 Hz difference = alpha beat)
+  const rightOsc = audioCtx.createOscillator();
+  const rightGain = audioCtx.createGain();
+  rightOsc.type = 'sine';
+  rightOsc.frequency.value = 210;
+  rightGain.gain.value = 0.5;
+  rightOsc.connect(rightGain);
+  rightGain.connect(merger, 0, 1); // right channel
+  rightOsc.start();
+  oscNodes.push(rightOsc);
+
+  // Ambient ocean undertone — low sine rumble, both channels
+  // Frequency scales gently with intensity for immersive feel
+  const ambientFreq = 55 + (intVal / 100) * 30; // 55–85 Hz
+  const ambOsc = audioCtx.createOscillator();
+  const ambGain = audioCtx.createGain();
+  ambOsc.type = 'sine';
+  ambOsc.frequency.value = ambientFreq;
+  ambGain.gain.value = 0.18;
+  ambOsc.connect(ambGain);
+  ambGain.connect(masterGain);
+  ambOsc.start();
+  oscNodes.push(ambOsc);
+
+  // Soft harmonic shimmer — gentle sine at 3x ambient, very quiet
+  const shimOsc = audioCtx.createOscillator();
+  const shimGain = audioCtx.createGain();
+  shimOsc.type = 'sine';
+  shimOsc.frequency.value = ambientFreq * 3;
+  shimGain.gain.value = 0.04;
+  shimOsc.connect(shimGain);
+  shimGain.connect(masterGain);
+  shimOsc.start();
+  oscNodes.push(shimOsc);
+}
+function stopAmbience(){oscNodes.forEach(o=>{try{o.stop();}catch(e){}});oscNodes=[];}
+
+// ══════════════════════════════
+// UI
+// ══════════════════════════════
+function selectChar(el){
+  document.querySelectorAll('.char-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');selChar=el.dataset.char;updateCharPreviews();
+
+}
+function selectEmotion(el){
+  document.querySelectorAll('.emotion-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');selEmotion=el.dataset.emotion;selEmoKey=el.dataset.emoKey;
+  updateCharPreviews();checkReady();
+
+}
+function updateIntensity(val){
+  intensity=parseInt(val);
+  document.getElementById('intensity-display').innerHTML=`${intensity} <span>/ 100</span>`;
+  // Live-preview ocean while on screen 1
+  targetWH=intensity/100*0.58;targetDark=intensity/100*0.5;
+}
+function checkReady(){document.getElementById('begin-btn').classList.toggle('ready',!!selEmotion);}
+function goScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(`screen-${n}`).classList.add('active');}
+
+// ══════════════════════════════
+// GAME START
+// ══════════════════════════════
+function startGame(){
+  initAudio();
+  setWaveMiniChar();
+  document.getElementById('wave-emo-name').textContent=selEmotion;
+  document.getElementById('wave-emo-int').textContent=`Starting at ${intensity} · Stay with it`;
+
+  // Preload boat character image (force refresh with current emotion)
+
+
+  // Ocean starts at user's intensity immediately
+  const startFraction=intensity/100;
+  curWH=startFraction*0.82;
+  curDark=startFraction*0.68;
+  targetWH=curWH;
+  targetDark=curDark;
+
+  playAmbience(intensity);
+  goScreen(2);
+
+  // Show gauge at starting value right away
+  updateDistressGauge(intensity);
+
+  startWaveLoop();
+}
+function replayWave(){startGame();}
+
+// ══════════════════════════════
+// WAVE LOOP — DBT MECHANIC
+//
+// Wave arc shape (DBT-accurate):
+//   Starts at user's SUDS level (intensity)
+//   Rises to a peak ~15% above starting level (emotions briefly intensify)
+//   Then gradually subsides to 0
+//   Duration = 45s (low intensity) → 95s (high intensity)
+//
+// Balance:
+//   No input for >2s → drifts toward ignore side (left)
+//   Holding key too long → pushes toward control side (right)
+//   Brief tap → helpful nudge back toward center
+// ══════════════════════════════
+function startWaveLoop(){
+  waveActive=true;waveTime=0;presencePos=0;
+  spaceHoldFrames=0;noInputFrames=0;spaceHeld=false;recentTaps=0;tapDecayTimer=0;cloudFrameCount=0;breathRunning=false;breathDoneTime=-1;cloud2Spawned=false;breathStarted=false;
+  const bg=document.getElementById('breath-guide'); if(bg) bg.classList.remove('show');
+  ghostCD=0;pulseCD=0;
+
+  // Duration scales with intensity: 45s at 0, 95s at 100
+  waveDuration=45+(intensity/100)*50;
+
+  if(waveInterval)clearInterval(waveInterval);
+  waveInterval=setInterval(tickWave,100);
+}
+
+function tickWave(){
+  if(!waveActive)return;
+  waveTime+=0.1;
+  const prog=Math.min(waveTime/waveDuration,1);
+
+  // ── WAVE SHAPE ──
+  // Starts at `intensity`, briefly peaks ~15% higher (capped at 100),
+  // then subsides to 0 by end.
+  //
+  // Arc: rise phase (0→0.3) takes it from start up to peak
+  //       hold phase (0.3→0.55) hovers near peak
+  //       fall phase (0.55→1.0) drops to 0
+  //
+  const start=intensity;
+  const peak=Math.min(100, intensity*1.15);
+  let liveSUDS;
+  if(prog<0.3){
+    // Rise: start → peak
+    const t2=prog/0.3;
+    liveSUDS=lerp(start,peak,t2);
+  } else if(prog<0.55){
+    // Hold near peak with gentle wobble
+    const t2=(prog-0.3)/0.25;
+    liveSUDS=peak - t2*peak*0.1;
+  } else {
+    // Fall: peak region → 0
+    const t2=(prog-0.55)/0.45;
+    liveSUDS=lerp(peak*0.9,0,t2);
+  }
+
+  updateDistressGauge(liveSUDS);
+
+  // Ocean follows the natural wave arc independently of balance
+  targetWH=(liveSUDS/100)*0.78;
+  targetDark=(liveSUDS/100)*0.64;
+
+  // Decay recent tap count over ~3s (30 frames)
+  tapDecayTimer++;
+  if(tapDecayTimer>=30){ recentTaps=Math.max(0,recentTaps-1); tapDecayTimer=0; }
+
+  // ── PRESENCE MECHANIC (Linehan's Mindfulness of Current Emotions) ──
+  //
+  // Correct: brief spacebar tap every few seconds = mindful breath → nudges toward center
+  // Failure 1 (avoidance):   no input for >4s → drifts LEFT (ignoring)
+  // Failure 2 (over-control): holding OR tapping too rapidly → pushes RIGHT (fighting)
+  //
+  const avoidanceDrift = 0.0018 + (intensity/100)*0.003;
+
+  if(!spaceHeld){
+    noInputFrames++;
+    spaceHoldFrames=0;
+    // After 4s stillness: drift toward avoidance (left/negative)
+    if(noInputFrames>40){
+      presencePos -= avoidanceDrift * (1 + (noInputFrames-40)*0.008);
+    } else {
+      // Natural centering when recently anchored
+      presencePos *= 0.968;
+    }
+  } else {
+    noInputFrames=0;
+    spaceHoldFrames++;
+    if(spaceHoldFrames<=6){
+      // Quick tap: nudge toward center — but if already right of center AND tapping
+      // rapidly (recentTaps high), this counts as over-control
+      if(recentTaps < 4){
+        // Healthy anchor — pull toward zero
+        presencePos += (presencePos < 0 ? 0.07 : -0.03);
+      } else {
+        // Too many taps in short window = frantic = over-control → push right
+        presencePos += 0.035;
+      }
+    } else {
+      // Holding too long = white-knuckling → push right (controlling)
+      presencePos += 0.014;
+    }
+  }
+
+  presencePos=Math.max(-1,Math.min(1,presencePos));
+
+  // ── FEEDBACK ──
+  if(presencePos<-0.6){
+    triggerPulse(); showGhost("let's not run away from the feeling");
+  } else if(presencePos>0.6){
+    triggerPulse(); showGhost("let's not try to fight the feeling");
+  }
+
+  if(ghostCD>0)ghostCD--;
+  if(pulseCD>0)pulseCD--;
+  tickClouds();
+
+  updatePresenceDot();
+  if(prog>=1)endWave();
+}
+
+function endWave(){
+  waveActive=false;clearInterval(waveInterval);stopAmbience();
+  targetWH=0.04;targetDark=0;presencePos=0;breathScaleTarget=1.0;
+  breathRunning=false;clearTimeout(breathTimer);clearInterval(breathCountTimer);
+  const bg2=document.getElementById('breath-guide'); if(bg2) bg2.classList.remove('show');
+  setResolutionChar();updatePresenceDot();
+  setTimeout(()=>goScreen(3),800);
+}
+
+// ══════════════════════════════
+// KEYBOARD — SPACEBAR ONLY
+// ══════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key===' '||e.key==='Spacebar'){
+    e.preventDefault();
+    if(!spaceHeld){ spaceHeld=true; spaceHoldFrames=0; recentTaps++; }
+    document.getElementById('spacebar-key').classList.add('pressed');
+  }
+});
+document.addEventListener('keyup',e=>{
+  if(e.key===' '||e.key==='Spacebar'){
+    spaceHeld=false;
+    document.getElementById('spacebar-key').classList.remove('pressed');
+  }
+});
+
+
+// ══════════════════════════════
+// END CHECK-IN (SCREEN 4)
+// ══════════════════════════════
+let endEmotion=null, endEmoKey=null, endIntensity=null;
+
+function goToEndCheckin(){
+  // Pre-select same emotion as start
+  endEmotion=selEmotion; endEmoKey=selEmoKey; endIntensity=null;
+  // Update end screen character
+  const ec=document.getElementById('end-char-display');
+  if(ec) ec.innerHTML=buildCharSVG(selChar, selEmoKey||'neutral', 72);
+  const cn=document.getElementById('end-char-name');
+  if(cn) cn.textContent=selChar.charAt(0).toUpperCase()+selChar.slice(1);
+  // Pre-select matching emotion button
+  document.querySelectorAll('#end-emotion-grid .emotion-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.emoKey===selEmoKey);
+  });
+  // Reset end intensity display
+  document.getElementById('end-intensity-display').innerHTML='— <span style="font-size:0.7rem;color:var(--text-dim);">/ 100</span>';
+  document.getElementById('end-intensity-slider').value=50;
+  document.getElementById('end-comparison').style.display='none';
+  goScreen(4);
+}
+
+function selectEndEmotion(el){
+  document.querySelectorAll('#end-emotion-grid .emotion-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  endEmotion=el.dataset.emotion; endEmoKey=el.dataset.emoKey;
+  // Update character face to match new emotion
+  const ec=document.getElementById('end-char-display');
+  if(ec) ec.innerHTML=buildCharSVG(selChar, endEmoKey||'neutral', 72);
+  updateEndComparison();
+}
+
+function updateEndIntensity(val){
+  endIntensity=parseInt(val);
+  document.getElementById('end-intensity-display').innerHTML=`${endIntensity} <span style="font-size:0.7rem;color:var(--text-dim);">/ 100</span>`;
+  updateEndComparison();
+}
+
+function updateEndComparison(){
+  if(endIntensity===null) return;
+  const comp=document.getElementById('end-comparison');
+  comp.style.display='flex';
+  document.getElementById('end-compare-before').textContent=intensity;
+  document.getElementById('end-compare-after').textContent=endIntensity;
+  const delta=endIntensity-intensity;
+  const deltaEl=document.getElementById('end-compare-delta');
+  if(delta<0) deltaEl.textContent=`↓ ${Math.abs(delta)} lower`;
+  else if(delta>0) deltaEl.textContent=`↑ ${delta} higher`;
+  else deltaEl.textContent='same';
+}
+
+function showDone(){
+  // Build done screen
+  const dc=document.getElementById('done-char');
+  if(dc) dc.innerHTML=buildCharSVG(selChar, endEmoKey||'neutral', 80);
+  const delta = endIntensity!==null ? endIntensity-intensity : null;
+  const msg=document.getElementById('done-msg');
+  const sub=document.getElementById('done-sub');
+  if(delta!==null && delta<-10){
+    msg.innerHTML='"You stayed.<br>The wave passed."';
+    sub.textContent=`You went from ${intensity} to ${endIntensity}. That's the skill working.`;
+  } else if(delta!==null && delta>10){
+    msg.innerHTML='"Emotions take time.<br>You showed up."';
+    sub.textContent='It doesn\'t always feel better right away. Coming back is the practice.';
+  } else {
+    msg.innerHTML='"You stayed.<br>That was enough."';
+    sub.textContent='Every time you stay with it, you build the skill.';
+  }
+  goScreen(5);
+}
+
+
+// ══════════════════════════════
+// FLOATING CLOUD REMINDERS
+// DBT-rooted phrases drift across the sky during gameplay
+// ══════════════════════════════
+const CLOUD_PHRASES = [
+  'notice the wave',
+  'let it come and go',
+  'breathe, just breathe',
+  'you are not the feeling',
+  'this too shall pass',
+  'stay with it, gently',
+  'observe without judgment',
+  'the tide always turns',
+  'just notice',
+  'be here now',
+];
+let cloudTimer = 0;
+let cloudInterval = 220; // frames between clouds (~22s at 10fps ticks, we use rAF)
+let cloudT = 0;
+
+function spawnCloud(){
+  const layer = document.getElementById('cloud-layer');
+  if(!layer) return;
+
+  const phrase = CLOUD_PHRASES[Math.floor(Math.random() * CLOUD_PHRASES.length)];
+  const el = document.createElement('div');
+  el.className = 'cloud-reminder';
+
+  // Random starting position: left third to right third of screen, sky region (top 10-30%)
+  const startX = Math.random() * (window.innerWidth * 0.4) + window.innerWidth * 0.05;
+  const startY = Math.random() * (window.innerHeight * 0.16) + window.innerHeight * 0.14;
+  const travelX = window.innerWidth * (0.22 + Math.random() * 0.16); // gentle rightward drift
+  const travelY = (Math.random() - 0.4) * 30; // slight vertical drift
+  const duration = 28000 + Math.random() * 8000; // 28-36s — slow, meditative drift
+
+  el.style.left = startX + 'px';
+  el.style.top  = startY + 'px';
+  el.style.setProperty('--cx', travelX + 'px');
+  el.style.setProperty('--cy', travelY + 'px');
+
+  // Cloud puffs (decorative, fluffy)
+  const puffs = document.createElement('div');
+  puffs.className = 'cloud-puffs';
+  // 5 puffs with varying sizes for organic fluffy look
+  const puffDefs = [
+    {w:30,h:22,ml:0,   mt:10},
+    {w:42,h:34,ml:-10, mt:0},
+    {w:50,h:38,ml:-12, mt:-4},
+    {w:38,h:30,ml:-12, mt:2},
+    {w:26,h:20,ml:-8,  mt:8},
+  ];
+  puffDefs.forEach(p => {
+    const s = document.createElement('span');
+    s.style.cssText = `width:${p.w}px;height:${p.h}px;margin-left:${p.ml}px;margin-top:${p.mt}px;border-radius:50%;`;
+    puffs.appendChild(s);
+  });
+
+  const bubble = document.createElement('div');
+  bubble.className = 'cloud-bubble';
+  bubble.textContent = phrase;
+
+  el.appendChild(puffs);
+  el.appendChild(bubble);
+  layer.appendChild(el);
+
+  // Trigger animation
+  requestAnimationFrame(() => {
+    el.style.animationDuration = duration + 'ms';
+    el.classList.add('visible');
+  });
+
+  // Remove after animation
+  setTimeout(() => el.remove(), duration + 500);
+}
+
+// ══════════════════════════════
+// CLOUD + BREATH SEQUENCER — strict non-overlap, intensity-scaled
+//
+// Intensity-scaled breath rounds (DBT TIPP research):
+//   1-30  → 1 round  (mild distress)
+//   31-60 → 2 rounds (moderate)
+//   61-100→ 3 rounds (high, full DBT protocol)
+//
+// Sequence per wave:
+//   ~8s  → cloud 1 drifts slowly across sky (28-36s travel time)
+//   ~30s → cloud has cleared → box breathing begins, NO cloud overlap
+//   After breath finishes → one more cloud if wave has >14s remaining
+// ══════════════════════════════
+let cloudFrameCount = 0;
+let breathDoneTime = -1;
+let cloud2Spawned = false;
+let breathStarted = false;
+
+function breathRoundsForIntensity(val){
+  if(val <= 30) return 1;
+  if(val <= 60) return 2;
+  return 3;
+}
+
+function tickClouds(){
+  cloudFrameCount++;
+
+  // Cloud 1 at 8s (80 × 100ms ticks)
+  if(cloudFrameCount === 80){
+    spawnCloud();
+  }
+
+  // Box breath at 30s (300 ticks) — well after cloud has cleared
+  if(cloudFrameCount === 300 && !breathStarted){
+    breathStarted = true;
+    if(!breathRunning) startBoxBreath();
+  }
+
+  // Cloud 2: only after breath fully done, only if wave has time left
+  if(breathDoneTime > 0 && !cloud2Spawned){
+    const remaining = waveDuration - waveTime;
+    if(remaining > 14){
+      cloud2Spawned = true;
+      spawnCloud();
+    } else {
+      cloud2Spawned = true; // skip — wave ending
+    }
+  }
+}
+
+// ══════════════════════════════
+// BOX BREATH GUIDE — 5-5-5-5, 3 rounds (DBT TIPP paced breathing)
+// Sequenced: cloud appears → 4s delay → box breath runs (60s) → ends → cloud follows
+// ══════════════════════════════
+const BREATH_ARC_CIRC = 283; // 2π × 45
+const BOX_SEC = 5;
+let BOX_ROUNDS = 3; // set dynamically in startBoxBreath based on intensity
+
+let breathRunning = false;
+let breathRound = 0;
+let breathPhaseIdx = 0;
+let breathTimer = null;
+let breathCountTimer = null;
+let breathCountdown = BOX_SEC;
+
+const PHASE_LABELS = ['breathe in', 'hold', 'breathe out', 'hold'];
+const PHASE_EXPAND = [true, true, false, false];
+
+function startBoxBreath(){
+  if(breathRunning) return;
+  breathRunning = true;
+  breathRound = 0;
+  breathPhaseIdx = 0;
+
+  // Scale rounds to intensity
+  BOX_ROUNDS = breathRoundsForIntensity(intensity);
+
+  const guide = document.getElementById('breath-guide');
+  if(guide) guide.classList.add('show');
+
+  // Show only the dots for this round count, hide extras
+  for(let i=0;i<3;i++){
+    const d = document.getElementById('bdot-'+i);
+    if(d){ d.className='breath-round-dot'; d.style.display = i < BOX_ROUNDS ? '' : 'none'; }
+  }
+  const d0 = document.getElementById('bdot-0');
+  if(d0) d0.classList.add('active');
+
+  runBreathPhase();
+}
+
+function runBreathPhase(){
+  const label = document.getElementById('breath-phase-label');
+  const circle = document.getElementById('breath-circle');
+  const arc = document.getElementById('breath-arc');
+  const countEl = document.getElementById('breath-count');
+
+  const phase = breathPhaseIdx % 4;
+  if(label) label.textContent = PHASE_LABELS[phase];
+  const expanding = PHASE_EXPAND[phase];
+
+  if(circle){
+    circle.classList.remove('expanding','contracting');
+    void circle.offsetWidth;
+    circle.style.transition = `transform ${BOX_SEC}s ease-in-out, box-shadow ${BOX_SEC*0.6}s ease`;
+    circle.classList.add(expanding ? 'expanding' : 'contracting');
+  }
+
+  if(arc){
+    const currentFill = ((breathRound*4 + phase) / (BOX_ROUNDS*4)) * BREATH_ARC_CIRC;
+    const nextFill    = ((breathRound*4 + phase+1) / (BOX_ROUNDS*4)) * BREATH_ARC_CIRC;
+    arc.style.transition = 'none';
+    arc.setAttribute('stroke-dasharray', `${currentFill} ${BREATH_ARC_CIRC}`);
+    requestAnimationFrame(() => {
+      arc.style.transition = `stroke-dasharray ${BOX_SEC}s linear`;
+      arc.setAttribute('stroke-dasharray', `${nextFill} ${BREATH_ARC_CIRC}`);
+    });
+  }
+
+  breathCountdown = BOX_SEC;
+  if(countEl) countEl.textContent = BOX_SEC;
+  clearInterval(breathCountTimer);
+  breathCountTimer = setInterval(() => {
+    breathCountdown--;
+    if(countEl) countEl.textContent = Math.max(0, breathCountdown);
+    if(breathCountdown <= 0) clearInterval(breathCountTimer);
+  }, 1000);
+
+  breathScaleTarget = expanding ? 1.18 : 1.0;
+
+  clearTimeout(breathTimer);
+  breathTimer = setTimeout(() => {
+    breathPhaseIdx++;
+    if(breathPhaseIdx % 4 === 0){
+      breathRound++;
+      const prevDot = document.getElementById('bdot-'+(breathRound-1));
+      if(prevDot) prevDot.className='breath-round-dot done';
+      if(breathRound >= BOX_ROUNDS){ setTimeout(endBoxBreath, 600); return; }
+      const nextDot = document.getElementById('bdot-'+breathRound);
+      if(nextDot) nextDot.classList.add('active');
+    }
+    runBreathPhase();
+  }, BOX_SEC * 1000);
+}
+
+function endBoxBreath(){
+  breathRunning = false;
+  breathScaleTarget = 1.0;
+  clearTimeout(breathTimer);
+  clearInterval(breathCountTimer);
+  const guide = document.getElementById('breath-guide');
+  if(guide) guide.classList.remove('show');
+  breathDoneTime = waveTime; // signals tickClouds to consider cloud 2
+}
+
+function triggerBreathGuide(){ startBoxBreath(); }
+
+// ── INIT ──
+updateCharPreviews();
+
+</script>
+</body>
+</html>
