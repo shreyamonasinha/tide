@@ -1,69 +1,69 @@
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// TIDE — Anonymous Session Logger
+// Privacy design: NO personal information collected.
+// No IP address, no user ID, no device fingerprint, no cookies.
+// All fields are behavioral/clinical metrics only.
+// Safe for COPPA (anonymous data, no under-13 PII) and FERPA (no student identifiers).
 
 export default async function handler(req, res) {
-  try {
-    // Only allow POST
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed. Use POST." });
-    }
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-    // Basic env checks
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({
-        error: "Missing Supabase env vars",
-        missing: {
-          SUPABASE_URL: !SUPABASE_URL,
-          SUPABASE_SERVICE_ROLE_KEY: !SUPABASE_SERVICE_ROLE_KEY
-        }
-      });
-    }
+  let body;
+  try { body = req.body ?? JSON.parse(req.body); }
+  catch { return res.status(400).json({ error: "Bad JSON" }); }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return res.status(500).json({ error: "Missing Supabase env vars" });
 
-    const {
-      emotion,
-      emo_key,
-      intensity_start,
-      intensity_end,
-      wave_duration,
-      wave_completed,
-      presence_avg
-    } = req.body || {};
+  const payload = {
+    // ── Core outcome measure ──────────────────────────────
+    intensity_start:      body.intensity_start      ?? null,  // SUDS at session start (0–100)
+    intensity_end:        body.intensity_end         ?? null,  // SUDS at session end (0–100, null if bailed)
+    suds_delta:           (body.intensity_start != null && body.intensity_end != null)
+                            ? body.intensity_end - body.intensity_start
+                            : null,                           // Computed: negative = improvement
 
-    // Minimal validation
-    if (!emotion || intensity_start == null) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        required: ["emotion", "intensity_start"]
-      });
-    }
+    // ── Engagement / completion ───────────────────────────
+    wave_completed:       body.wave_completed        ?? false, // Did they finish the full wave?
+    wave_duration_sec:    body.wave_duration_sec     ?? null,  // How long the wave was set to run
+    time_in_wave_sec:     body.time_in_wave_sec      ?? null,  // Actual seconds before exit/completion
 
-    const payload = {
-      emotion,
-      emo_key: emo_key ?? emotion,
-      intensity_start,
-      intensity_end: intensity_end ?? null,
-      wave_duration: wave_duration ?? null,
-      wave_completed: wave_completed ?? null,
-      presence_avg: presence_avg ?? null
-    };
+    // ── Clinical behavioral data ──────────────────────────
+    emotion:              body.emotion               ?? null,  // Display label (e.g. "Anxious")
+    emo_key:              body.emo_key               ?? null,  // Slug (e.g. "anxious") for grouping
 
-    const { data, error } = await supabase
-      .from("tide_sessions")
-      .insert([payload])
-      .select()
-      .single();
+    // ── Presence quality metrics ──────────────────────────
+    presence_mean_abs:    body.presence_mean_abs     ?? null,  // Avg deviation from center (0–1)
+    presence_pct_present: body.presence_pct_present  ?? null,  // % time in green zone (0–1)
+    presence_pct_danger:  body.presence_pct_danger   ?? null,  // % time in red zone (0–1)
 
-    if (error) {
-      return res.status(500).json({ error: error.message, details: error });
-    }
+    // ── Return rate tracking (anonymous) ─────────────────
+    session_id:           body.session_id            ?? null,  // Random UUID generated client-side per session
+                                                               // NOT tied to any user identity
 
-    return res.status(200).json({ success: true, data });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error", details: String(err) });
+    // ── Time context (for usage pattern analysis) ─────────
+    // Stored server-side so client clock can't be spoofed.
+    // No timezone or precise location — UTC only.
+    created_at:           new Date().toISOString(),
+    hour_of_day:          new Date().getUTCHours(),           // 0–23 UTC — for time-of-day patterns
+    day_of_week:          new Date().getUTCDay(),             // 0=Sun … 6=Sat
+  };
+
+  const r = await fetch(`${url}/rest/v1/tide_sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r.ok) {
+    const t = await r.text();
+    return res.status(500).json({ error: "Insert failed", detail: t.slice(0, 600) });
   }
+
+  return res.status(200).json({ ok: true });
 }
