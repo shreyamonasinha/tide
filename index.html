@@ -1048,7 +1048,11 @@ function updateIntensity(val){
   targetWH=intensity/100*0.58;targetDark=intensity/100*0.5;
 }
 function checkReady(){document.getElementById('begin-btn').classList.toggle('ready',!!selEmotion);}
-function goScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(`screen-${n}`).classList.add('active');}
+function goScreen(n){
+  if(waveActive) endWave(true); // bail-log if leaving mid-wave
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`screen-${n}`).classList.add('active');
+}
 
 // ══════════════════════════════
 // GAME START
@@ -1094,7 +1098,9 @@ function replayWave(){startGame();}
 //   Brief tap → helpful nudge back toward center
 // ══════════════════════════════
 function startWaveLoop(){
-  waveActive=true;waveTime=0;presencePos=0;
+  waveActive=true;waveTime=0;presencePos=0;presenceReadings=[];
+  sessionId = generateSessionId();
+  waveStartTime = Date.now();
   spaceHoldFrames=0;noInputFrames=0;spaceHeld=false;recentTaps=0;tapDecayTimer=0;cloudFrameCount=0;breathRunning=false;breathDoneTime=-1;cloud2Spawned=false;breathStarted=false;
   const bg=document.getElementById('breath-guide'); if(bg) bg.classList.remove('show');
   ghostCD=0;pulseCD=0;
@@ -1196,18 +1202,25 @@ function tickWave(){
   if(pulseCD>0)pulseCD--;
   tickClouds();
 
+  presenceReadings.push(presencePos);
   updatePresenceDot();
   if(prog>=1)endWave();
 }
 
-function endWave(){
+function endWave(bailed=false){
+  if(bailed) logSession(false); // log incomplete session immediately
   waveActive=false;clearInterval(waveInterval);stopAmbience();
   targetWH=0.04;targetDark=0;presencePos=0;breathScaleTarget=1.0;
   breathRunning=false;clearTimeout(breathTimer);clearInterval(breathCountTimer);
   const bg2=document.getElementById('breath-guide'); if(bg2) bg2.classList.remove('show');
   setResolutionChar();updatePresenceDot();
-  setTimeout(()=>goScreen(3),800);
+  if(!bailed) setTimeout(()=>goScreen(3),800);
 }
+
+// Log bail if user closes/refreshes mid-wave
+window.addEventListener('beforeunload', () => {
+  if(waveActive) logSession(false);
+});
 
 // ══════════════════════════════
 // KEYBOARD — SPACEBAR ONLY
@@ -1280,6 +1293,56 @@ function updateEndComparison(){
   else deltaEl.textContent='same';
 }
 
+// ══════════════════════════════
+// SESSION LOGGING
+// Privacy: anonymous only. No user ID, no IP, no fingerprint.
+// session_id is a random UUID per session — not tied to any identity.
+// ══════════════════════════════
+let presenceReadings = [];
+let sessionId = null;      // fresh UUID each wave
+let waveStartTime = null;  // wall-clock time wave began
+
+function generateSessionId(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+  });
+}
+
+function logSession(completed){
+  const meanAbs = presenceReadings.length
+    ? presenceReadings.reduce((s,v)=>s+Math.abs(v),0)/presenceReadings.length
+    : null;
+  const pctPresent = presenceReadings.length
+    ? presenceReadings.filter(v=>Math.abs(v)<=0.35).length/presenceReadings.length
+    : null;
+  const pctDanger = presenceReadings.length
+    ? presenceReadings.filter(v=>Math.abs(v)>0.65).length/presenceReadings.length
+    : null;
+
+  const timeInWave = waveStartTime ? Math.round((Date.now()-waveStartTime)/1000) : null;
+
+  const payload = {
+    session_id:           sessionId,
+    emotion:              selEmotion,
+    emo_key:              selEmoKey,
+    intensity_start:      intensity,
+    intensity_end:        completed ? endIntensity : null,
+    wave_duration_sec:    Math.round(waveDuration),
+    time_in_wave_sec:     timeInWave,
+    wave_completed:       !!completed,
+    presence_mean_abs:    meanAbs    !== null ? Math.round(meanAbs*1000)/1000    : null,
+    presence_pct_present: pctPresent !== null ? Math.round(pctPresent*1000)/1000 : null,
+    presence_pct_danger:  pctDanger  !== null ? Math.round(pctDanger*1000)/1000  : null,
+  };
+
+  fetch('/api/log', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  }).catch(err => console.warn('Session log failed:', err));
+}
+
 function showDone(){
   // Build done screen
   const dc=document.getElementById('done-char');
@@ -1297,6 +1360,7 @@ function showDone(){
     msg.innerHTML='"You stayed.<br>That was enough."';
     sub.textContent='Every time you stay with it, you build the skill.';
   }
+  logSession(true);
   goScreen(5);
 }
 
